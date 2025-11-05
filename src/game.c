@@ -17,6 +17,9 @@ static World world;
 static GameTimer timer35;
 static GameState state;
 static int rowsPlayable = MAX_LANES - 1; // topo utilizável (exclui base)
+static Vector2 cameraOffset = {0,0};
+static float cameraScrollThreshold = SCREEN_H * 0.3f;
+static float cameraLerpSpeed = 8.0f;
 
 static void ResetGame(void) {
     World_Init(&world, SCREEN_W, SCREEN_H, TILE);
@@ -65,14 +68,14 @@ void Game_Draw(void) {
     BeginDrawing();
     ClearBackground((Color){ 30, 30, 40, 255 });
 
-    World_Draw(&world);
-    Player_Draw(&player);
+    World_Draw(&world, cameraOffset);
+    Player_Draw(&player, cameraOffset);
 
     // UI
     DrawRectangle(0, 0, SCREEN_W, 40, (Color){0, 0, 0, 140});
     char hud[128];
-    snprintf(hud, sizeof(hud), "Tempo: %02d  |  Pontos: %d",
-             (int)timer35.timeLeft, player.score);
+    snprintf(hud, sizeof(hud), "Tempo: %02d  |  Pontos: %d  | CameraY: %.1f  |  PlayerY:",
+             (int)timer35.timeLeft, player.score, cameraOffset.y, player.box.y);
     DrawText(hud, 16, 10, 20, RAYWHITE);
 
     if (state == STATE_GAMEOVER) {
