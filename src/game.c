@@ -6,11 +6,11 @@
 #include "raylib.h"
 #include <stdio.h>
 
-#define SCREEN_W   800
-#define SCREEN_H   600
-#define TILE       48.0f
+#define SCREEN_W    800
+#define SCREEN_H    600
+#define TILE        48.0f
 #define TOTAL_TIME 35.0f
-#define WORLD_W    800.0f  // largura lógica do mundo (coincide com tela)
+#define WORLD_W     800.0f  // largura lógica do mundo (coincide com tela)
 
 typedef enum { STATE_HOME, STATE_PLAYING, STATE_GAMEOVER } GameState;
 
@@ -27,6 +27,7 @@ static Camera2D cam;
 
 // util
 static void ResetGame(void) {
+    // World_Init agora também carrega as texturas
     World_Init(&world, WORLD_W, TILE);
     Player_Init(&player, (Vector2){ WORLD_W*0.5f - TILE*0.5f, 0.0f }, TILE);
     Timer_Reset(&timer35, TOTAL_TIME);
@@ -43,7 +44,9 @@ void Game_Init(void) {
     SetTargetFPS(60);
     InitAudioDevice();
 
+    // World_Init agora também carrega as texturas
     World_Init(&world, WORLD_W, TILE);
+    
     Player_Init(&player, (Vector2){ WORLD_W*0.5f - TILE*0.5f, 0.0f }, TILE);
     Timer_Start(&timer35, TOTAL_TIME);
     state = STATE_HOME;
@@ -124,6 +127,7 @@ void Game_Draw(void) {
     };
 
     BeginMode2D(cam);
+        // World_Draw agora desenha as texturas
         World_Draw(&world, visibleWorldRect);
         Player_Draw(&player);
 
@@ -169,6 +173,14 @@ void Game_Draw(void) {
 }
 
 void Game_Unload(void) {
+    // --- NOVO: Descarregar nossas texturas ---
+    UnloadTexture(world.texPavement);
+    UnloadTexture(world.texRoad);
+    for (int i = 0; i < NUM_CAR_TEXTURES; i++) {
+        UnloadTexture(world.texCar[i]);
+    }
+    // ----------------------------------------
+
     CloseAudioDevice();
     CloseWindow();
 }
