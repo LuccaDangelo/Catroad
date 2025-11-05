@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include <stdbool.h>
+#include "raylib.h" 
 
 void Game_Init(void);
 void Game_Update(void);

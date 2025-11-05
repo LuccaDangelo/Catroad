@@ -1,6 +1,7 @@
 #ifndef TIMER_H
 #define TIMER_H
 #include <stdbool.h>
+#include "raylib.h" 
 
 typedef struct {
     float timeLeft;   // segundos restantes

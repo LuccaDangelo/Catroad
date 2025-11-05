@@ -20,7 +20,7 @@ void Player_Update(Player *p, float dt, float tile, int maxRows, int screenW, in
             delta.y -= tile;
             movedRow = true;
         } else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
-            if (p->row > 0) { // não deixa passar da base
+            if (p->row > 0) {
                 delta.y += tile;
                 p->row -= 1;
                 p->moveCd = 0.12f;
@@ -34,11 +34,10 @@ void Player_Update(Player *p, float dt, float tile, int maxRows, int screenW, in
         }
 
         if (delta.x != 0 || movedRow) {
-            // aplica movimento em grade
             p->box.x += delta.x;
             if (movedRow) {
                 p->box.y += delta.y;
-                if (delta.y < 0) { // subiu uma linha
+                if (delta.y < 0) {
                     p->row += 1;
                     if (p->row > p->maxRow) {
                         p->maxRow = p->row;
@@ -50,31 +49,35 @@ void Player_Update(Player *p, float dt, float tile, int maxRows, int screenW, in
         }
     }
 
-    // mantêm dentro da tela
     if (p->box.x < 0) p->box.x = 0;
     if (p->box.x + p->box.width > screenW) p->box.x = screenW - p->box.width;
     if (p->box.y + p->box.height > screenH) p->box.y = screenH - p->box.height;
 
-    // limita à linha máxima (não deixa ir além do topo das lanes)
     if (p->row > maxRows) p->row = maxRows;
 }
 
-void Player_Draw(const Player *p) {
-    // gato estilizado como quadrado com “orelhas” simples
-    DrawRectangleRec(p->box, (Color){240, 180, 60, 255});              // corpo
+// 🎥 FUNÇÃO DRAW AGORA USA CÂMERA
+void Player_Draw(const Player *p, Vector2 cameraOffset) {
+    // 🎥 CRIA UMA CÓPIA DA POSIÇÃO DO PLAYER COM OFFSET APLICADO
+    Rectangle playerRect = p->box;
+    playerRect.y -= cameraOffset.y;
+    
+    // Desenha o player na posição ajustada pela câmera
+    DrawRectangleRec(playerRect, (Color){240, 180, 60, 255});
+    
+    // 🎥 TODOS OS ELEMENTOS VISUAIS USAM A POSIÇÃO COM OFFSET
     DrawTriangle(
-        (Vector2){p->box.x + p->box.width*0.25f, p->box.y + 8},
-        (Vector2){p->box.x + p->box.width*0.40f, p->box.y - p->box.height*0.25f},
-        (Vector2){p->box.x + p->box.width*0.55f, p->box.y + 8},
+        (Vector2){playerRect.x + playerRect.width*0.25f, playerRect.y + 8},
+        (Vector2){playerRect.x + playerRect.width*0.40f, playerRect.y - playerRect.height*0.25f},
+        (Vector2){playerRect.x + playerRect.width*0.55f, playerRect.y + 8},
         (Color){240, 180, 60, 255}
     );
     DrawTriangle(
-        (Vector2){p->box.x + p->box.width*0.60f, p->box.y + 8},
-        (Vector2){p->box.x + p->box.width*0.75f, p->box.y - p->box.height*0.25f},
-        (Vector2){p->box.x + p->box.width*0.90f, p->box.y + 8},
+        (Vector2){playerRect.x + playerRect.width*0.60f, playerRect.y + 8},
+        (Vector2){playerRect.x + playerRect.width*0.75f, playerRect.y - playerRect.height*0.25f},
+        (Vector2){playerRect.x + playerRect.width*0.90f, playerRect.y + 8},
         (Color){240, 180, 60, 255}
     );
-    // olhos
-    DrawCircle(p->box.x + p->box.width*0.35f, p->box.y + p->box.height*0.45f, 3, BLACK);
-    DrawCircle(p->box.x + p->box.width*0.65f, p->box.y + p->box.height*0.45f, 3, BLACK);
+    DrawCircle(playerRect.x + playerRect.width*0.35f, playerRect.y + playerRect.height*0.45f, 3, BLACK);
+    DrawCircle(playerRect.x + playerRect.width*0.65f, playerRect.y + playerRect.height*0.45f, 3, BLACK);
 }
