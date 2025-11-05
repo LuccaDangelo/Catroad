@@ -3,7 +3,7 @@
 #include "world.h"
 #include "timer.h"
 
-#include <raylib.h>
+#include "raylib.h"
 #include <stdio.h>
 
 #define SCREEN_W  800
