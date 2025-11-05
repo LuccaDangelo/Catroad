@@ -1,8 +1,52 @@
 #include "world.h"
 #include "raylib.h"
 
+// Random float in [a, b]
 static float randf(float a, float b) {
     return a + (float)GetRandomValue(0, 10000) / 10000.0f * (b - a);
+}
+
+// Compatível com versões de raylib sem DrawTextureTiled.
+// Repete a textura 'tex' (região 'src') para preencher 'dest' com scale/rotation/origin.
+static void DrawTextureTiledCompat(Texture2D tex,
+                                   Rectangle src,
+                                   Rectangle dest,
+                                   Vector2 origin,
+                                   float rotation,
+                                   float scale,
+                                   Color tint)
+{
+    if (scale <= 0.0f) scale = 1.0f;
+
+    const float tileW = src.width  * scale;
+    const float tileH = src.height * scale;
+    if (tileW <= 0 || tileH <= 0) return;
+
+    const float destRight  = dest.x + dest.width;
+    const float destBottom = dest.y + dest.height;
+
+    for (float y = dest.y; y < destBottom; y += tileH) {
+        float drawH = tileH;
+        float srcH  = src.height;
+        if (y + drawH > destBottom) {
+            drawH = destBottom - y;
+            srcH  = drawH / scale;
+        }
+
+        for (float x = dest.x; x < destRight; x += tileW) {
+            float drawW = tileW;
+            float srcW  = src.width;
+            if (x + drawW > destRight) {
+                drawW = destRight - x;
+                srcW  = drawW / scale;
+            }
+
+            Rectangle srcPart = (Rectangle){ src.x, src.y, srcW, srcH };
+            Rectangle dstPart = (Rectangle){ x, y, drawW, drawH };
+
+            DrawTexturePro(tex, srcPart, dstPart, origin, rotation, tint);
+        }
+    }
 }
 
 void World_Init(World *w, float worldWidth, float tile) {
@@ -11,21 +55,19 @@ void World_Init(World *w, float worldWidth, float tile) {
     w->laneCount = MAX_LANES;
 
     // --- CARREGAR TEXTURAS ---
-    // (Certifique-se que a pasta 'resources' e os PNGs existam!)
     w->texPavement = LoadTexture("resources/pavement.png");
-    w->texRoad = LoadTexture("resources/road.png");
-    
+    w->texRoad     = LoadTexture("resources/road.png");
+
     w->texCar[0] = LoadTexture("resources/car1.png");
     w->texCar[1] = LoadTexture("resources/car2.png");
     w->texCar[2] = LoadTexture("resources/car3.png");
-    // -------------------------
+    // --------------------------
 
-    // Lógica de linhas: i=0 é a BASE (gramado) em yTop = 0
-    // i=1 é a faixa logo acima (rua), em yTop = -tile, e assim por diante
+    // i=0 é a base (gramado) em yTop = 0; i=1 é a rua em yTop = -tile; etc.
     for (int i = 0; i < w->laneCount; i++) {
         Lane *ln = &w->lanes[i];
         ln->yTop = -i * tile;
-        ln->isRoad = (i % 2 == 1); // alterna base/gramado, depois rua, etc.
+        ln->isRoad = (i % 2 == 1); // alterna: gramado/rua/gramado/rua...
         ln->carCount = 0;
 
         if (ln->isRoad) {
@@ -40,12 +82,11 @@ void World_Init(World *w, float worldWidth, float tile) {
                 float wcar = tile * randf(1.2f, 1.8f);
                 float hcar = tile * 0.8f;
                 float x = (float)GetRandomValue(-(int)worldWidth, (int)worldWidth);
+
                 ln->cars[c].box = (Rectangle){ x, ln->yTop + (tile - hcar)*0.5f, wcar, hcar };
                 ln->cars[c].baseSpeed = speedBase * randf(0.9f, 1.2f);
                 ln->cars[c].dir = dir;
                 ln->cars[c].active = true;
-                
-                // --- NOVO: Escolhe uma textura de carro aleatória ---
                 ln->cars[c].textureIndex = GetRandomValue(0, NUM_CAR_TEXTURES - 1);
             }
         }
@@ -77,71 +118,56 @@ void World_Update(World *w, float dt, float difficulty) {
 }
 
 void World_Draw(const World *w, const Rectangle visibleWorldRect) {
-    // --- 1. DESENHAR FAIXAS (TEXTURIZADAS) ---
+    // --- 1) DESENHAR FAIXAS (TEXTURAS) ---
     for (int i = 0; i < w->laneCount; i++) {
         const Lane *ln = &w->lanes[i];
         float yTop = ln->yTop;
         float yBot = ln->yTop + w->tile;
 
-        // checagem de interseção vertical simples
+        // culling vertical simples
         if (yBot < visibleWorldRect.y || yTop > (visibleWorldRect.y + visibleWorldRect.height)) {
             continue;
         }
 
-        // --- SUBSTITUÍDO: DrawRectangle por DrawTextureTiled ---
-        // Escolhe a textura (cimento ou estrada)
         Texture2D tex = ln->isRoad ? w->texRoad : w->texPavement;
+        Rectangle texSource = (Rectangle){ 0, 0, (float)tex.width, (float)tex.height };
+        Rectangle texDest   = (Rectangle){ 0, ln->yTop, w->worldWidth, w->tile };
+        Vector2 origin = (Vector2){ 0, 0 };
 
-        // Define a área da textura a ser repetida (a textura inteira)
-        Rectangle texSource = { 0, 0, (float)tex.width, (float)tex.height };
-        // Define a área na tela onde a textura será desenhada (a faixa)
-        Rectangle texDest = { 0, ln->yTop, w->worldWidth, w->tile };
-        // Origem (para o padrão de repetição)
-        Vector2 origin = { 0, 0 };
-
-        // *** ESTA É A LINHA CORRIGIDA ***
-        DrawTextureTiled(tex, texSource, texDest, origin, 0.0f, 1.0f, WHITE);
-        // --------------------------------------------------------
+        // Compatível com versões sem DrawTextureTiled
+        DrawTextureTiledCompat(tex, texSource, texDest, origin, 0.0f, 1.0f, WHITE);
 
         if (ln->isRoad) {
-            // Mantemos as linhas para dar um acabamento
             DrawLine(0, (int)ln->yTop, (int)w->worldWidth, (int)ln->yTop, (Color){230, 230, 230, 120});
             DrawLine(0, (int)(ln->yTop + w->tile), (int)w->worldWidth, (int)(ln->yTop + w->tile), (Color){230, 230, 230, 120});
         }
     }
 
-    // --- 2. DESENHAR CARROS (TEXTURIZADOS) ---
+    // --- 2) DESENHAR CARROS (TEXTURAS) ---
     for (int i = 0; i < w->laneCount; i++) {
         const Lane *ln = &w->lanes[i];
         if (!ln->isRoad) continue;
 
         for (int c = 0; c < ln->carCount; c++) {
             const Car *car = &ln->cars[c];
+            if (!car->active) continue;
 
-            // culling simples
+            // culling vertical
             if (car->box.y + car->box.height < visibleWorldRect.y ||
                 car->box.y > visibleWorldRect.y + visibleWorldRect.height) {
                 continue;
             }
 
-            // --- SUBSTITUÍDO: DrawRectangleRec por DrawTexturePro ---
             Texture2D carTex = w->texCar[car->textureIndex];
-            
-            // Define o retângulo fonte (a textura inteira)
-            // IMPORTANTE: Flipamos a textura se a direção for < 0 (esquerda)
-            // fazendo a largura do 'source' ser negativa.
-            Rectangle source = { 0, 0, (float)carTex.width, (float)carTex.height };
+            Rectangle source = (Rectangle){ 0, 0, (float)carTex.width, (float)carTex.height };
             if (car->dir < 0) {
-                source.width = -source.width; // Vira a textura horizontalmente
+                source.width = -source.width; // flip horizontal
             }
-            
-            // Define o retângulo de destino (a caixa do carro)
+
             Rectangle dest = car->box;
-
             DrawTexturePro(carTex, source, dest, (Vector2){0,0}, 0.0f, WHITE);
-            // -----------------------------------------------------------
 
-            // Faróis (opcional, mas legal - eles desenham por cima da textura)
+            // Faróis (opcional)
             DrawCircle(car->box.x + (car->dir > 0 ? car->box.width - 6 : 6),
                        car->box.y + car->box.height*0.3f, 3, YELLOW);
             DrawCircle(car->box.x + (car->dir > 0 ? car->box.width - 6 : 6),
@@ -149,8 +175,6 @@ void World_Draw(const World *w, const Rectangle visibleWorldRect) {
         }
     }
 }
-
-// ... (Funções de colisão não mudam) ...
 
 bool World_CheckCollision(const World *w, Rectangle player) {
     for (int i = 0; i < w->laneCount; i++) {
