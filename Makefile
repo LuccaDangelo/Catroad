@@ -1,41 +1,37 @@
-# Compiler and flags
-CC = gcc
-CFLAGS = -Wall -Werror -g -I$(INCLUDE_DIR)
+# CatRoad - Makefile simples (Linux/macOS/Windows via MSYS2 MinGW64)
 
-#project name
-PROJ_NAME = cli-lib-example
+APP      := catroad
+BUILD    := build
+SRC_DIR  := src
+INC_DIR  := include
+SRCS     := $(wildcard $(SRC_DIR)/*.c)
+OBJS     := $(SRCS:$(SRC_DIR)/%.c=$(BUILD)/%.o)
+CC       := gcc
+CFLAGS   := -O2 -Wall -Wextra -I$(INC_DIR)
 
-# Target directories
-BUILD_DIR   = build
-OBJ_DIR     = $(BUILD_DIR)/obj
-SRC_DIR     = src
-INCLUDE_DIR = include
+UNAME_S := $(shell uname -s)
 
-# Source files
-SRC_FILES = $(notdir $(wildcard $(SRC_DIR)/*.c))
-OBJ_FILES = $(SRC_FILES:%.c=$(OBJ_DIR)/%.o)
+# libs por SO
+ifeq ($(UNAME_S), Linux)
+    LDFLAGS := -lraylib -lm -lpthread -ldl -lrt -lX11
+else ifeq ($(UNAME_S), Darwin) # macOS
+    LDFLAGS := -lraylib -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
+else
+    # Assume Windows (MSYS2 MinGW64)
+    LDFLAGS := -lraylib -lopengl32 -lgdi32 -lwinmm
+endif
 
-# Build target
-all: $(OBJ_DIR) $(OBJ_FILES)
-	@echo Creating $(BUILD_DIR)/$(PROJ_NAME)
-	@$(CC) $(CFLAGS) -o $(BUILD_DIR)/$(PROJ_NAME) $(OBJ_FILES)
+$(BUILD)/$(APP): $(OBJS)
+	@mkdir -p $(BUILD)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-# Build directory
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+$(BUILD)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR): $(BUILD_DIR)
-	mkdir -p $(OBJ_DIR)
+.PHONY: run clean
+run: $(BUILD)/$(APP)
+	./$(BUILD)/$(APP)
 
-# Object files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	@echo Compiling $@...
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-# Clean target
 clean:
-	rm -rf $(BUILD_DIR)
-
-# Run target
-run: all
-	./$(BUILD_DIR)/cli-lib-example
+	rm -rf $(BUILD)
