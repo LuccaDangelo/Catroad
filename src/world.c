@@ -99,6 +99,7 @@ void World_Draw(const World *w, const Rectangle visibleWorldRect) {
         // Origem (para o padrão de repetição)
         Vector2 origin = { 0, 0 };
 
+        // *** ESTA É A LINHA CORRIGIDA ***
         DrawTextureTiled(tex, texSource, texDest, origin, 0.0f, 1.0f, WHITE);
         // --------------------------------------------------------
 
