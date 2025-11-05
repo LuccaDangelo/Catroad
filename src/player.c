@@ -56,16 +56,11 @@ void Player_Update(Player *p, float dt, float tile, int maxRows, int screenW, in
     if (p->row > maxRows) p->row = maxRows;
 }
 
-// 🎥 FUNÇÃO DRAW AGORA USA CÂMERA
 void Player_Draw(const Player *p, Vector2 cameraOffset) {
-    // 🎥 CRIA UMA CÓPIA DA POSIÇÃO DO PLAYER COM OFFSET APLICADO
     Rectangle playerRect = p->box;
     playerRect.y -= cameraOffset.y;
     
-    // Desenha o player na posição ajustada pela câmera
     DrawRectangleRec(playerRect, (Color){240, 180, 60, 255});
-    
-    // 🎥 TODOS OS ELEMENTOS VISUAIS USAM A POSIÇÃO COM OFFSET
     DrawTriangle(
         (Vector2){playerRect.x + playerRect.width*0.25f, playerRect.y + 8},
         (Vector2){playerRect.x + playerRect.width*0.40f, playerRect.y - playerRect.height*0.25f},

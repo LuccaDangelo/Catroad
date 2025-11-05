@@ -9,15 +9,14 @@ void World_Init(World *w, int screenW, int screenH, float tile) {
     w->tile = tile;
     w->laneCount = MAX_LANES;
 
-    // distribui faixas do bottom para cima
     for (int i = 0; i < w->laneCount; i++) {
         Lane *ln = &w->lanes[i];
         ln->y = screenH - (int)((i+1) * tile);
-        ln->isRoad = (i % 2 == 1); // alterna: base gramado (i=0), depois rua, etc.
+        ln->isRoad = (i % 2 == 1);
         ln->carCount = 0;
 
         if (ln->isRoad) {
-            int cars = 2 + GetRandomValue(0, 2); // 2–4 carros
+            int cars = 2 + GetRandomValue(0, 2);
             if (cars > MAX_CARS_PER_LANE) cars = MAX_CARS_PER_LANE;
             ln->carCount = cars;
 
@@ -37,7 +36,6 @@ void World_Init(World *w, int screenW, int screenH, float tile) {
 }
 
 void World_Update(World *w, float dt, int screenW) {
-    // move os carros com wrap
     for (int i = 0; i < w->laneCount; i++) {
         Lane *ln = &w->lanes[i];
         if (!ln->isRoad) continue;
@@ -55,39 +53,40 @@ void World_Update(World *w, float dt, int screenW) {
     }
 }
 
-void World_Draw(const World *w) {
-    // gramado/base
+void World_Draw(const World *w, Vector2 cameraOffset) {
     for (int i = 0; i < w->laneCount; i++) {
         const Lane *ln = &w->lanes[i];
         Color col = ln->isRoad ? (Color){ 60, 60, 60, 255 } : (Color){ 60, 120, 60, 255 };
-        DrawRectangle(0, ln->y, GetScreenWidth(), (int)w->tile, col);
+        
+        int drawY = ln->y - (int)cameraOffset.y;
+        DrawRectangle(0, drawY, GetScreenWidth(), (int)w->tile, col);
 
-        // linhas de faixa (rua)
         if (ln->isRoad) {
-            DrawLine(0, ln->y, GetScreenWidth(), ln->y, (Color){ 230, 230, 230, 120 });
-            DrawLine(0, ln->y + (int)w->tile, GetScreenWidth(), ln->y + (int)w->tile, (Color){ 230, 230, 230, 120 });
+            DrawLine(0, drawY, GetScreenWidth(), drawY, (Color){ 230, 230, 230, 120 });
+            DrawLine(0, drawY + (int)w->tile, GetScreenWidth(), drawY + (int)w->tile, (Color){ 230, 230, 230, 120 });
         }
     }
 
-    // carros
     for (int i = 0; i < w->laneCount; i++) {
         const Lane *ln = &w->lanes[i];
         if (!ln->isRoad) continue;
         for (int c = 0; c < ln->carCount; c++) {
             const Car *car = &ln->cars[c];
             if (!car->active) continue;
-            DrawRectangleRec(car->box, (Color){ 200, 30, 60, 255 });
-            // “faróis”
-            DrawCircle(car->box.x + (car->dir > 0 ? car->box.width - 6 : 6),
-                       car->box.y + car->box.height*0.3f, 3, YELLOW);
-            DrawCircle(car->box.x + (car->dir > 0 ? car->box.width - 6 : 6),
-                       car->box.y + car->box.height*0.7f, 3, YELLOW);
+            
+            Rectangle carRect = car->box;
+            carRect.y -= cameraOffset.y;
+            
+            DrawRectangleRec(carRect, (Color){ 200, 30, 60, 255 });
+            DrawCircle(carRect.x + (car->dir > 0 ? carRect.width - 6 : 6),
+                       carRect.y + carRect.height*0.3f, 3, YELLOW);
+            DrawCircle(carRect.x + (car->dir > 0 ? carRect.width - 6 : 6),
+                       carRect.y + carRect.height*0.7f, 3, YELLOW);
         }
     }
 }
 
 bool World_CheckCollision(const World *w, Rectangle player) {
-    // colisão com carros somente nas ruas
     for (int i = 0; i < w->laneCount; i++) {
         const Lane *ln = &w->lanes[i];
         if (!ln->isRoad) continue;

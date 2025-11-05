@@ -4,7 +4,7 @@
 #include "raylib.h" 
 
 typedef struct {
-    float timeLeft;   // segundos restantes
+    float timeLeft;
     bool running;
 } GameTimer;
 

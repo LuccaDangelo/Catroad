@@ -16,9 +16,9 @@ static Player player;
 static World world;
 static GameTimer timer35;
 static GameState state;
-static int rowsPlayable = MAX_LANES - 1; // topo utilizável (exclui base)
+static int rowsPlayable = MAX_LANES - 1;
 
-// 🎥 VARIÁVEIS DA CÂMERA
+// 🎥 SISTEMA DE CÂMERA
 static Vector2 cameraOffset = {0, 0};
 
 static void ResetGame(void) {
@@ -39,6 +39,7 @@ void Game_Init(void) {
     Player_Init(&player, (Vector2){ SCREEN_W*0.5f - TILE*0.5f, SCREEN_H - TILE }, TILE);
     Timer_Start(&timer35, TOTAL_TIME);
     state = STATE_PLAYING;
+    cameraOffset = (Vector2){0, 0};
 }
 
 void Game_Update(void) {
@@ -49,15 +50,11 @@ void Game_Update(void) {
         World_Update(&world, dt, SCREEN_W);
         Player_Update(&player, dt, TILE, rowsPlayable, SCREEN_W, SCREEN_H);
 
-        // 🎥 CÂMERA FUNCIONAL - SIMPLES E DIRETA
-        float targetY = player.box.y - (SCREEN_H * 0.4f); // Player a 40% da tela
-        
-        // Só move a câmera se o player estiver subindo
-        if (targetY > cameraOffset.y) {
-            cameraOffset.y = targetY;
+        // 🎥 CÂMERA SIMPLES E FUNCIONAL
+        float playerScreenY = player.box.y - cameraOffset.y;
+        if (playerScreenY < 200.0f) { // Quando player chega a 200px do topo
+            cameraOffset.y += (200.0f - playerScreenY) * 5.0f * dt;
         }
-        
-        // Nunca deixa a câmera ir para baixo do chão
         if (cameraOffset.y < 0) cameraOffset.y = 0;
 
         // checa colisão ou fim do tempo
@@ -80,15 +77,14 @@ void Game_Draw(void) {
     BeginDrawing();
     ClearBackground((Color){ 30, 30, 40, 255 });
 
-    // 🎥 MUNDO E PLAYER COM CÂMERA
     World_Draw(&world, cameraOffset);
     Player_Draw(&player, cameraOffset);
 
-    // UI (FIXA na tela - não move com câmera)
+    // UI
     DrawRectangle(0, 0, SCREEN_W, 40, (Color){0, 0, 0, 140});
     char hud[128];
-    snprintf(hud, sizeof(hud), "Tempo: %02d | Pontos: %d | Camera: %.1f",
-             (int)timer35.timeLeft, player.score, cameraOffset.y);
+    snprintf(hud, sizeof(hud), "Tempo: %02d  |  Pontos: %d",
+             (int)timer35.timeLeft, player.score);
     DrawText(hud, 16, 10, 20, RAYWHITE);
 
     if (state == STATE_GAMEOVER) {
