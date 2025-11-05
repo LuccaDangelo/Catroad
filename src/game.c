@@ -16,29 +16,16 @@ static Player player;
 static World world;
 static GameTimer timer35;
 static GameState state;
-static int rowsPlayable = MAX_LANES - 1;
+static int rowsPlayable = MAX_LANES - 1; // topo utilizável (exclui base)
 
-// 🎥 VARIÁVEIS DO SISTEMA DE CÂMERA PROFISSIONAL
+// 🎥 VARIÁVEIS DA CÂMERA
 static Vector2 cameraOffset = {0, 0};
-static float cameraScrollThreshold = SCREEN_H * 0.3f; // 30% do topo = zona de scroll
-static float cameraLerpSpeed = 8.0f; // Velocidade de suavização
 
 static void ResetGame(void) {
     World_Init(&world, SCREEN_W, SCREEN_H, TILE);
     Player_Init(&player, (Vector2){ SCREEN_W*0.5f - TILE*0.5f, SCREEN_H - TILE }, TILE);
     Timer_Reset(&timer35, TOTAL_TIME);
     state = STATE_PLAYING;
-    
-    // 🎥 Reset da câmera quando reinicia o jogo
-    Game_ResetCamera();
-}
-
-// 🎥 IMPLEMENTAÇÃO DAS FUNÇÕES DA CÂMERA
-Vector2 Game_GetCameraOffset(void) {
-    return cameraOffset;
-}
-
-void Game_ResetCamera(void) {
     cameraOffset = (Vector2){0, 0};
 }
 
@@ -93,18 +80,32 @@ void Game_Draw(void) {
     BeginDrawing();
     ClearBackground((Color){ 30, 30, 40, 255 });
 
-    // 🎥 IMPORTANTE: Passar cameraOffset para ambos
+    // 🎥 MUNDO E PLAYER COM CÂMERA
     World_Draw(&world, cameraOffset);
     Player_Draw(&player, cameraOffset);
 
-    // UI (fica fixa)
+    // UI (FIXA na tela - não move com câmera)
     DrawRectangle(0, 0, SCREEN_W, 40, (Color){0, 0, 0, 140});
     char hud[128];
     snprintf(hud, sizeof(hud), "Tempo: %02d | Pontos: %d | Camera: %.1f",
              (int)timer35.timeLeft, player.score, cameraOffset.y);
     DrawText(hud, 16, 10, 20, RAYWHITE);
 
-    // ... resto do game over
+    if (state == STATE_GAMEOVER) {
+        const char *msg = "Game Over!";
+        int fw = MeasureText(msg, 40);
+        DrawText(msg, SCREEN_W/2 - fw/2, SCREEN_H/2 - 60, 40, RED);
+
+        char sc[128];
+        snprintf(sc, sizeof(sc), "Distancia (linhas): %d", player.score);
+        int sw = MeasureText(sc, 24);
+        DrawText(sc, SCREEN_W/2 - sw/2, SCREEN_H/2 - 16, 24, RAYWHITE);
+
+        const char *hint = "[ENTER] ou [R] para reiniciar";
+        int hw = MeasureText(hint, 20);
+        DrawText(hint, SCREEN_W/2 - hw/2, SCREEN_H/2 + 20, 20, GRAY);
+    }
+
     EndDrawing();
 }
 
