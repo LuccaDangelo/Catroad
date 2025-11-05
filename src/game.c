@@ -52,10 +52,10 @@ void Game_Update(void) {
 
         // 🎥 CÂMERA SIMPLES E FUNCIONAL
         float playerScreenY = player.box.y - cameraOffset.y;
-        if (playerScreenY < 200.0f) { // Quando player chega a 200px do topo
-            cameraOffset.y += (200.0f - playerScreenY) * 5.0f * dt;
+        if (player.box.y < 300.0f && cameraOffset.y < player.box.y){
+            cameraOffset.y = player.box.y - 300.0f;
         }
-        if (cameraOffset.y < 0) cameraOffset.y = 0;
+        if (cameraOffset.y > 0) cameraOffset.y = 0;
 
         // checa colisão ou fim do tempo
         if (World_CheckCollision(&world, player.box) || Timer_IsOver(&timer35)) {
