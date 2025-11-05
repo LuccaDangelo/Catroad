@@ -1,5 +1,5 @@
 #include "player.h"
-#include "raylib.h"
+#include <raylib.h>
 
 void Player_Init(Player *p, Vector2 startPos, float size) {
     p->box = (Rectangle){ startPos.x, startPos.y, size, size };
