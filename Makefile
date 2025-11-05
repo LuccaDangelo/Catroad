@@ -1,29 +1,29 @@
-# CatRoad - Makefile simples (Linux/macOS/Windows via MSYS2 MinGW64)
-
+# CatRoad - Makefile robusto (Linux)
 APP      := catroad
 BUILD    := build
 SRC_DIR  := src
 INC_DIR  := include
 SRCS     := $(wildcard $(SRC_DIR)/*.c)
 OBJS     := $(SRCS:$(SRC_DIR)/%.c=$(BUILD)/%.o)
+
 CC       := gcc
 CFLAGS   := -O2 -Wall -Wextra -I$(INC_DIR)
 
-UNAME_S := $(shell uname -s)
+# --- Ajuste automático: tenta pkg-config, senão usa /usr/local como fallback ---
+RAYLIB_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null)
+RAYLIB_LIBS   := $(shell pkg-config --libs   raylib 2>/dev/null)
 
-# libs por SO
-ifeq ($(UNAME_S), Linux)
-    LDFLAGS := -lraylib -lm -lpthread -ldl -lrt -lX11
-else ifeq ($(UNAME_S), Darwin) # macOS
-    LDFLAGS := -lraylib -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
-else
-    # Assume Windows (MSYS2 MinGW64)
-    LDFLAGS := -lraylib -lopengl32 -lgdi32 -lwinmm
-endif
+# Força incluir /usr/local se compilou a raylib do fonte (make install padrão)
+CFLAGS  += $(RAYLIB_CFLAGS) -I/usr/local/include
+LDFLAGS := -Wl,--no-as-needed -L/usr/local/lib
+
+# Ordem IMPORTA: primeiro objetos, depois raylib, depois libm e cia.
+# (Mesmo que pkg-config retorne algo, completamos com -lm e libs de sistema.)
+LDLIBS  := $(RAYLIB_LIBS) -lraylib -lm -lpthread -ldl -lrt -lX11
 
 $(BUILD)/$(APP): $(OBJS)
 	@mkdir -p $(BUILD)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(BUILD)
@@ -35,29 +35,3 @@ run: $(BUILD)/$(APP)
 
 clean:
 	rm -rf $(BUILD)
-
-	UNAME_S := $(shell uname -s)
-
-ifeq ($(UNAME_S), Linux)
-    PKGCF    := $(shell which pkg-config 2>/dev/null)
-    ifneq ($(PKGCF),)
-        RAYLIB_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null)
-        RAYLIB_LIBS   := $(shell pkg-config --libs   raylib 2/ dev/null)
-    endif
-
-    CFLAGS  := -O2 -Wall -Wextra -I$(INC_DIR) $(RAYLIB_CFLAGS)
-    ifneq ($(strip $(RAYLIB_LIBS)),)
-        LDFLAGS := $(RAYLIB_LIBS)
-    else
-        # fallback (se pkg-config não achou)
-        LDFLAGS := -lraylib -lm -lpthread -ldl -lrt -lX11
-        # Se você compilou do fonte e instalou em /usr/local:
-        CFLAGS  += -I/usr/local/include
-        LDFLAGS += -L/usr/local/lib
-    endif
-else ifeq ($(UNAME_S), Darwin)
-    LDFLAGS := -lraylib -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
-else
-    LDFLAGS := -lraylib -lopengl32 -lgdi32 -lwinmm
-endif
-
