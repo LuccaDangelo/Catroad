@@ -3,11 +3,12 @@
 #include "world.h"
 #include "timer.h"
 
+#include "raylib.h"
 #include <stdio.h>
 
-#define SCREEN_W  800
-#define SCREEN_H  600
-#define TILE      48.0f
+#define SCREEN_W   800
+#define SCREEN_H   600
+#define TILE       48.0f
 #define TOTAL_TIME 35.0f
 
 typedef enum { STATE_PLAYING, STATE_GAMEOVER } GameState;
@@ -18,12 +19,22 @@ static GameTimer timer35;
 static GameState state;
 static int rowsPlayable = MAX_LANES - 1;
 
-// 🎥 SISTEMA DE CÂMERA
+// Offset da “câmera” (em coordenadas do mundo)
 static Vector2 cameraOffset = {0, 0};
 
+// alinha a BASE (pés) do gato à linha mais próxima (múltiplo de tile)
+static void SnapPlayerFeetToNearestLine(Player *p, float tile) {
+    float bottom = p->box.y + p->box.height;
+    float snappedBottom = ((int)((bottom / tile) + 0.5f)) * tile; // sem math.h
+    p->box.y = snappedBottom - p->box.height;
+}
+
 static void ResetGame(void) {
-    World_Init(&world, SCREEN_W, SCREEN_H, TILE);
+    World_Init(&world, (float)SCREEN_W, TILE);
+
     Player_Init(&player, (Vector2){ SCREEN_W*0.5f - TILE*0.5f, SCREEN_H - TILE }, TILE);
+    SnapPlayerFeetToNearestLine(&player, TILE);
+
     Timer_Reset(&timer35, TOTAL_TIME);
     state = STATE_PLAYING;
     cameraOffset = (Vector2){0, 0};
@@ -35,8 +46,11 @@ void Game_Init(void) {
     InitAudioDevice();
     SetRandomSeed(GetTime());
 
-    World_Init(&world, SCREEN_W, SCREEN_H, TILE);
+    World_Init(&world, (float)SCREEN_W, TILE);
+
     Player_Init(&player, (Vector2){ SCREEN_W*0.5f - TILE*0.5f, SCREEN_H - TILE }, TILE);
+    SnapPlayerFeetToNearestLine(&player, TILE);
+
     Timer_Start(&timer35, TOTAL_TIME);
     state = STATE_PLAYING;
     cameraOffset = (Vector2){0, 0};
@@ -47,17 +61,24 @@ void Game_Update(void) {
 
     if (state == STATE_PLAYING) {
         Timer_Update(&timer35, dt);
-        World_Update(&world, dt, SCREEN_W);
+
+        // AGORA: passamos o Y da câmera para o World_Update
+        // (o world usa isso para gerar/reciclar faixas com carros no que está visível)
+        World_Update(&world, dt, cameraOffset.y);
+
+        // Movimento do player (teu Player_Update original)
         Player_Update(&player, dt, TILE, rowsPlayable, SCREEN_W, SCREEN_H);
 
-        // 🎥 CÂMERA SIMPLES E FUNCIONAL
-        float playerScreenY = player.box.y - cameraOffset.y;
-        if (player.box.y < 300.0f && cameraOffset.y < player.box.y){
+        // Snap vertical: “pula” e fica exatamente nas linhas (verde/preta)
+        SnapPlayerFeetToNearestLine(&player, TILE);
+
+        // Câmera simples: sobe quando o player se aproxima do topo
+        if (player.box.y < 300.0f && cameraOffset.y < player.box.y) {
             cameraOffset.y = player.box.y - 300.0f;
         }
         if (cameraOffset.y > 0) cameraOffset.y = 0;
 
-        // checa colisão ou fim do tempo
+        // colisão ou fim do tempo
         if (World_CheckCollision(&world, player.box) || Timer_IsOver(&timer35)) {
             state = STATE_GAMEOVER;
         }
@@ -77,7 +98,16 @@ void Game_Draw(void) {
     BeginDrawing();
     ClearBackground((Color){ 30, 30, 40, 255 });
 
-    World_Draw(&world, cameraOffset);
+    // World_Draw espera um retângulo visível em coordenadas do mundo
+    Rectangle visibleWorldRect = (Rectangle){
+        cameraOffset.x,
+        cameraOffset.y,
+        (float)SCREEN_W,
+        (float)SCREEN_H
+    };
+    World_Draw(&world, visibleWorldRect);
+
+    // Player desenhado com offset de câmera (seu Player_Draw já aceita Vector2)
     Player_Draw(&player, cameraOffset);
 
     // UI
